@@ -1,0 +1,19 @@
+node_modules/
+dist/
+logs/
+*.log
+.DS_Store
+
+# Claude Code session data — never commit (private prompts/transcripts)
+.claude/data/
+.claude/scheduled_tasks*
+
+# Auth — never commit
+cookies.json
+.env
+.env.*
+!.env.sample
+
+# Downloaded media — per-client material, never commit
+downloads/
+moodboard/

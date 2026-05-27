@@ -1,0 +1,22 @@
+{
+	"name": "adcelerate-moodboarder",
+	"version": "0.1.0",
+	"type": "module",
+	"description": "Per-client Pinterest moodboard generator — image/video reference → Claude vision → keyword scrape → assembled per-deliverable moodboard folder.",
+	"scripts": {
+		"dev": "bun run --watch src/index.ts",
+		"build": "bun build src/index.ts --outdir dist --target bun --external playwright --external chromium-bidi --external electron",
+		"test": "bun test",
+		"lint": "bunx @biomejs/biome check .",
+		"check": "bunx @biomejs/biome check --write ."
+	},
+	"dependencies": {
+		"playwright": "^1.52.0",
+		"zod": "^3.23.0"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.0",
+		"@types/bun": "latest",
+		"typescript": "^5.7.0"
+	}
+}
