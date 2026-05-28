@@ -9,7 +9,7 @@ import { resolveImage } from "./input/image";
 import { extractKeyframes } from "./input/video";
 import { generateKeywords } from "./keywords";
 import { buildClientPath, nowTimestamp } from "./paths";
-import { collectForKeyword } from "./pinterest-scraper";
+import { collectForKeyword, pinHash, videoHash } from "./pinterest-scraper";
 import type { MoodboardConfig, PinAsset, VisualDNA } from "./types";
 
 export interface RunResult {
@@ -91,9 +91,11 @@ export async function run(config: MoodboardConfig): Promise<RunResult> {
 					const assets = await collectForKeyword(context, keyword, { media: config.media });
 					for (const a of assets) {
 						if (a.kind === "image") {
-							if (!globalImages.has(a.url)) globalImages.set(a.url, a);
-						} else if (!globalVideos.has(a.url)) {
-							globalVideos.set(a.url, a);
+							const k = pinHash(a.url);
+							if (!globalImages.has(k)) globalImages.set(k, a);
+						} else {
+							const k = videoHash(a.url);
+							if (!globalVideos.has(k)) globalVideos.set(k, a);
 						}
 					}
 					console.log(
