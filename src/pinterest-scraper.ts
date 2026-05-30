@@ -22,6 +22,21 @@ export function toHiRes(url: string): string {
 	return url.replace(/pinimg\.com\/[^/]+\//, "pinimg.com/736x/");
 }
 
+/**
+ * Rank a pinimg URL by the width of its size segment (e.g. `/236x/`, `/736x/`,
+ * `/originals/`). Larger = higher quality. `originals` ranks highest; URLs with
+ * no recognizable size segment rank lowest. Used to honor the best-URL dedup
+ * contract: when two URLs share a pin hash, keep the larger variant.
+ */
+export function pinResolutionRank(url: string): number {
+	const m = url.match(/pinimg\.com\/([^/]+)\//);
+	if (!m) return 0;
+	const seg = m[1];
+	if (seg === "originals") return Number.POSITIVE_INFINITY;
+	const wm = seg.match(/^(\d+)x/);
+	return wm ? Number(wm[1]) : 0;
+}
+
 export function toOriginal(url: string): string {
 	return url.replace(/pinimg\.com\/[^/]+\//, "pinimg.com/originals/");
 }
@@ -114,7 +129,12 @@ export async function collectForKeyword(
 				for (const u of batch.images) {
 					if (isJunkPinUrl(u)) continue;
 					const h = pinHash(u);
-					if (!seenImages.has(h)) seenImages.set(h, toHiRes(u));
+					const existing = seenImages.get(h);
+					// Best-URL contract: keep the larger variant when a better
+					// one is seen for the same pin (first-URL-wins lost detail).
+					if (!existing || pinResolutionRank(u) > pinResolutionRank(existing)) {
+						seenImages.set(h, u);
+					}
 				}
 			}
 			if (opts.media === "videos" || opts.media === "both") {
@@ -142,7 +162,10 @@ export async function collectForKeyword(
 
 		const assets: PinAsset[] = [];
 		for (const u of seenImages.values()) {
-			assets.push({ kind: "image", url: u, ext: "jpg" });
+			// Upgrade small thumbnails to 736x, but never downgrade a larger
+			// variant (e.g. /originals/, /1200x/) that we already captured.
+			const best = pinResolutionRank(u) >= 736 ? u : toHiRes(u);
+			assets.push({ kind: "image", url: best, ext: "jpg" });
 		}
 		for (const u of seenVideos.values()) {
 			assets.push({ kind: "video", url: u, ext: "mp4" });

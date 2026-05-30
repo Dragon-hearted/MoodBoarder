@@ -63,12 +63,22 @@ export function finalizeNaming(
 	let videos = 0;
 	if (media === "images" || media === "both") {
 		images = renumberFiles(paths.imagesDir, "jpg");
-		if (images === 0 && media === "both") {
-			// keep the empty images dir only if media === "both"; the user asked for both kinds
-		}
 	}
 	if (media === "videos" || media === "both") {
 		videos = renumberFiles(paths.videosDir, "mp4");
 	}
+
+	// Under `both`, a scrape can yield zero of one kind (e.g. all images, no
+	// videos). Prune the empty subdir so we never ship a stray empty
+	// videos/ or images/ directory inside the moodboard.
+	if (media === "both") {
+		if (images === 0) {
+			rmSync(paths.imagesDir, { recursive: true, force: true });
+		}
+		if (videos === 0) {
+			rmSync(paths.videosDir, { recursive: true, force: true });
+		}
+	}
+
 	return { images, videos };
 }
