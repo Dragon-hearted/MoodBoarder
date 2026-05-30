@@ -1,0 +1,12 @@
+{
+  "source_image": "/Users/dragonhearted/Downloads/pixel_avatar.png",
+  "subject": "developer portrait",
+  "mood": "focused warm",
+  "lighting": "amber edison glow with cool screen wash",
+  "composition": "centered close-up bust",
+  "color_palette": ["#f4a958", "#c08868", "#2a3a5c", "#4a6b8a", "#1a1d28"],
+  "dominant_colors": ["amber", "navy", "warm-skin"],
+  "style": "stylized anime illustration",
+  "era_or_genre": "modern indie dev",
+  "texture": "smooth painterly with light pixel grain"
+}

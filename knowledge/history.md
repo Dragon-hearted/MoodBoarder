@@ -24,6 +24,18 @@ lastUpdatedBy: build-mode
 - **Validation**: see the Adcelerate parent monorepo's `specs/_validation-moodboarder.md`.
 - **Reference**: Ported from an internal `my-moodboard` prototype (Claude-vision → 5 keywords → headed Chromium → 40 images). Re-implemented in TypeScript + Bun + Zod on top of Adcelerate scaffolding (instagram-scrapper auth pattern, autoCaption ffmpeg pattern, scene-board client-deliverable folder convention).
 
+## Execute Log
+
+### 2026-05-28 — dragonhearted_labs / social-launch-pixel
+
+- **System**: MoodBoarder (via precomputed driver `scripts/run-with-precomputed.ts`)
+- **Reason for driver**: claude CLI returned "Credit balance is too low"; Stages 1 (VisualDNA) + 2 (keywords) authored manually instead.
+- **Input**: `/Users/dragonhearted/Downloads/pixel_avatar.png`
+- **Stages**: analyze (manual) → keywords (manual, rejected once, modified for low-poly/pixel/glitch aesthetic) → login (auto-detect, cookies cached) → scrape (5 keywords, 1266 unique pins) → download (67 saved, 0 skipped) → finalize
+- **Output**: `client/dragonhearted_labs/social-launch-pixel/moodboard/moodboard_2026-05-28_09-18-01/` (67 images, 31 MB)
+- **Validation**: Hard gates output-level PASS (analysis JSONs, pin_NNN naming, no empty subdirs, all files >8 KB).
+- **Delivered**: Yes
+
 ## Fix Log
 
 _Entries added by diagnosis workflow._

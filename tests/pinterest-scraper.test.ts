@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { classifyUrl, pinHash, toHiRes, toOriginal, videoHash } from "../src/pinterest-scraper";
+import {
+	classifyUrl,
+	pinHash,
+	pinResolutionRank,
+	toHiRes,
+	toOriginal,
+	videoHash,
+} from "../src/pinterest-scraper";
 
 describe("pinHash", () => {
 	test("strips resolution segment for stable dedupe", () => {
@@ -46,6 +53,58 @@ describe("toHiRes / toOriginal", () => {
 	test("upgrade is idempotent on already-hi-res urls", () => {
 		const u = "https://i.pinimg.com/736x/AB/CD/EF/abc.jpg";
 		expect(toHiRes(u)).toBe(u);
+	});
+});
+
+describe("pinResolutionRank", () => {
+	test("ranks larger width segments higher", () => {
+		const lo = "https://i.pinimg.com/236x/AB/CD/EF/abc.jpg";
+		const hi = "https://i.pinimg.com/736x/AB/CD/EF/abc.jpg";
+		expect(pinResolutionRank(hi)).toBeGreaterThan(pinResolutionRank(lo));
+	});
+
+	test("ranks originals as the highest quality", () => {
+		const orig = "https://i.pinimg.com/originals/AB/CD/EF/abc.jpg";
+		const big = "https://i.pinimg.com/1200x/AB/CD/EF/abc.jpg";
+		expect(pinResolutionRank(orig)).toBeGreaterThan(pinResolutionRank(big));
+	});
+
+	test("ranks unknown / non-pinimg urls lowest", () => {
+		expect(pinResolutionRank("https://example.com/x.jpg")).toBe(0);
+	});
+
+	test("parses leading width from NxN segments", () => {
+		expect(pinResolutionRank("https://i.pinimg.com/60x60/AB/abc.jpg")).toBe(60);
+	});
+
+	test("best-URL dedup keeps the larger variant", () => {
+		// Simulate the harvest dedup decision: a better (higher-res) variant of
+		// the same pin should replace the first-seen one.
+		const seen = new Map<string, string>();
+		const first = "https://i.pinimg.com/236x/AB/CD/EF/abc.jpg";
+		const better = "https://i.pinimg.com/736x/AB/CD/EF/abc.jpg";
+		for (const u of [first, better]) {
+			const h = pinHash(u);
+			const existing = seen.get(h);
+			if (!existing || pinResolutionRank(u) > pinResolutionRank(existing)) {
+				seen.set(h, u);
+			}
+		}
+		expect(seen.get(pinHash(first))).toBe(better);
+	});
+
+	test("best-URL dedup ignores a smaller later variant", () => {
+		const seen = new Map<string, string>();
+		const better = "https://i.pinimg.com/736x/AB/CD/EF/abc.jpg";
+		const worse = "https://i.pinimg.com/236x/AB/CD/EF/abc.jpg";
+		for (const u of [better, worse]) {
+			const h = pinHash(u);
+			const existing = seen.get(h);
+			if (!existing || pinResolutionRank(u) > pinResolutionRank(existing)) {
+				seen.set(h, u);
+			}
+		}
+		expect(seen.get(pinHash(better))).toBe(better);
 	});
 });
 
