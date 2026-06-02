@@ -93,7 +93,17 @@ export async function run(config: MoodboardConfig): Promise<RunResult> {
 				const imagesByKeyword: PinAsset[][] = [];
 				const videosByKeyword: PinAsset[][] = [];
 				for (const keyword of keywords.keywords) {
-					const assets = await collectForKeyword(context, keyword, { media: config.media });
+					let assets: PinAsset[];
+					try {
+						assets = await collectForKeyword(context, keyword, { media: config.media });
+					} catch (e) {
+						// A transient per-keyword failure (e.g. Pinterest nav timeout) must
+						// not abort the whole run — log and move on to the next keyword.
+						console.warn(
+							`  ⚠  skipping "${keyword}" — scrape failed: ${e instanceof Error ? e.message : String(e)}`,
+						);
+						continue;
+					}
 					const kwImages: PinAsset[] = [];
 					const kwVideos: PinAsset[] = [];
 					for (const a of assets) {
