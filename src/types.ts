@@ -37,6 +37,14 @@ export type Keywords = z.infer<typeof KeywordsSchema>;
 export const MediaModeSchema = z.enum(["images", "videos", "both"]);
 export type MediaMode = z.infer<typeof MediaModeSchema>;
 
+// ── Engine ────────────────────────────────────────────────────────────────────
+// Harvest backend. `playwright` (default) is MoodBoarder's in-process scroll
+// harvest. `scrapling` routes through the sibling scrape-engine CLI; any failure
+// falls back to playwright.
+
+export const EngineSchema = z.enum(["playwright", "scrapling"]);
+export type Engine = z.infer<typeof EngineSchema>;
+
 // ── PinAsset ──────────────────────────────────────────────────────────────────
 // Discriminated union — kind drives the downloader's content-type guard, the
 // dedupe key (pinHash vs videoHash), and the destination subfolder.
@@ -74,6 +82,7 @@ export const MoodboardConfigSchema = z
 		headless: z.boolean().default(false),
 		frameCount: z.number().int().positive().default(5),
 		noColor: z.boolean().default(false),
+		engine: EngineSchema.default("playwright"),
 	})
 	.refine((v) => (v.image ? !v.video : !!v.video), {
 		message: "Provide exactly one of --image or --video",

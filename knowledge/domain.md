@@ -45,6 +45,15 @@ Unlike images, Pinterest serves a single best-rez per video pin — there's no r
 
 Video pins are served via Idea-Pin / story-pin components whose DOM structure Pinterest A/Bs. The current `<video>` + `<source src>` selector works as of 2026-05-27 but should be verified during any future scrape run. If Pinterest moves the URL into a `data-*` attribute or a JSON blob, the scraper needs a fallback path. The `--media images` feature-flag bypass keeps the system useful even if the video path breaks temporarily.
 
+### `--engine scrapling` (opt-in scrape-engine path)
+
+`--engine scrapling` (default `playwright`) routes the per-keyword harvest through the sibling **scrape-engine** system's CLI instead of MoodBoarder's in-process Playwright scroll. scrape-engine uses Scrapling's StealthyFetcher + adaptive CSS relocation, which is more resilient to the video-markup and cookie-name drift noted above (its adaptive mode re-finds selectors when Pinterest moves them).
+
+- **Invocation**: subprocess/CLI, not a package import — matching how systems call each other in this monorepo (e.g. scene-board → higgsfield). MoodBoarder spawns `bun run <dir>/src/cli.ts fetch <url> --fetcher stealthy --output extracted --css images=img --css "videos=video, video source" --attr src --attr srcset --adaptive --headless --timeout-ms 35000 --json` (plus `--cookies ./cookies.json`), parses the `FetchResult` JSON, and shapes `PinAsset[]` with the same dedup/upgrade helpers as the Playwright path.
+- **Fail-soft**: ANY failure (non-zero exit, unparseable stdout, `ok !== true`, spawn error) raises a local `ScrapeEngineUnavailableError` and the per-keyword loop falls back to the default Playwright harvest. The Playwright browser/context is always set up, so the fallback works even mid-run. `playwright` therefore remains the safe default.
+- **Requires** the scrape-engine system present on disk with its deps installed (`just install` there — `uv` + `scrapling[all]`). Engine dir resolves from `SCRAPE_ENGINE_DIR`, else the sibling `../scrape-engine`. Also selectable via `MOODBOARDER_ENGINE=scrapling`.
+- **Trade-off**: the scrapling path currently does a SINGLE fetch — no 14-round infinite-scroll harvest — so per-keyword yield is typically lower than the Playwright path. This is a known trade-off for the added stealth/adaptive resilience; revisit if scrape-engine grows a scroll/paginate mode.
+
 ### Claude CLI vision contract
 
 `src/analyze.ts` and `src/keywords.ts` spawn the local `claude` binary (Claude Code) — they do NOT call the Anthropic API directly. This means:

@@ -1,7 +1,13 @@
 #!/usr/bin/env bun
 import { parseArgs } from "node:util";
 import { run } from "./index";
-import { type MediaMode, MediaModeSchema, type MoodboardConfig } from "./types";
+import {
+	type Engine,
+	EngineSchema,
+	type MediaMode,
+	MediaModeSchema,
+	type MoodboardConfig,
+} from "./types";
 
 const HELP = `MoodBoarder — per-client Pinterest moodboard generator
 
@@ -23,6 +29,9 @@ FLAGS
   --count <n>               Sugar for total. Conflicts with --image-count and --video-count.
                             For --media both, splits 70/30 image:video.
   --frame-count <n>         Video keyframe count for analysis. Default 5.
+  --engine <name>           playwright | scrapling. Default playwright. 'scrapling'
+                            routes harvesting through the sibling scrape-engine CLI
+                            (any failure falls back to playwright).
   --headless                Run Pinterest scrape in headless mode (only after first login).
   --no-color                Disable colored output.
   -h, --help                Show this help.
@@ -38,6 +47,10 @@ EXAMPLES
   # Video reference, total of 30 split 70/30
   bun run src/cli.ts --client acme --deliverable spring-launch \\
       --video ref.mp4 --count 30 --description "soft natural light"
+
+  # Harvest via the scrape-engine CLI (falls back to Playwright on any failure)
+  bun run src/cli.ts --client acme --deliverable spring-launch \\
+      --image ref.jpg --engine scrapling
 
 LEARN MORE
   Knowledge base : systems/MoodBoarder/knowledge/
@@ -69,6 +82,7 @@ interface RawArgs {
 	frameCount?: number;
 	headless?: boolean;
 	noColor?: boolean;
+	engine?: Engine;
 }
 
 function parseInt10(s: string, flag: string): number {
@@ -94,6 +108,7 @@ function parseRawArgs(): RawArgs {
 				description: { type: "string" },
 				keywords: { type: "string" },
 				media: { type: "string" },
+				engine: { type: "string" },
 				"image-count": { type: "string" },
 				"video-count": { type: "string" },
 				count: { type: "string" },
@@ -127,6 +142,11 @@ function parseRawArgs(): RawArgs {
 		const result = MediaModeSchema.safeParse(v.media);
 		if (!result.success) die(`--media must be one of: images, videos, both (got "${v.media}")`);
 		raw.media = result.data;
+	}
+	if (typeof v.engine === "string") {
+		const result = EngineSchema.safeParse(v.engine);
+		if (!result.success) die(`--engine must be one of: playwright, scrapling (got "${v.engine}")`);
+		raw.engine = result.data;
 	}
 	if (typeof v["image-count"] === "string")
 		raw.imageCount = parseInt10(v["image-count"], "image-count");
@@ -221,6 +241,7 @@ function buildConfig(raw: RawArgs): MoodboardConfig {
 		headless: raw.headless ?? false,
 		frameCount: raw.frameCount ?? 5,
 		noColor: raw.noColor ?? false,
+		engine: raw.engine ?? "playwright",
 	};
 }
 

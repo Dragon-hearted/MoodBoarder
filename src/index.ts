@@ -10,7 +10,10 @@ import { extractKeyframes } from "./input/video";
 import { generateKeywords } from "./keywords";
 import { buildClientPath, nowTimestamp } from "./paths";
 import { collectForKeyword, pinHash, videoHash } from "./pinterest-scraper";
+import { collectForKeywordViaScrapling } from "./scrapling-collector";
 import type { MoodboardConfig, PinAsset, VisualDNA } from "./types";
+
+const COOKIES_PATH = "./cookies.json";
 
 export interface RunResult {
 	images: number;
@@ -78,9 +81,15 @@ export async function run(config: MoodboardConfig): Promise<RunResult> {
 		if (process.env.MOODBOARDER_REPLAY_FIXTURES === "1") {
 			console.log("  [replay] skipping Pinterest scrape — fixture-replay mode active");
 		} else {
+			// Harvest backend selection. The scrapling path routes through the
+			// sibling scrape-engine CLI and ignores the Playwright `context`; on
+			// ANY failure it falls back to the default in-process Playwright
+			// harvest, so we keep the browser/context setup unconditional.
+			const engine = config.engine ?? process.env.MOODBOARDER_ENGINE ?? "playwright";
+
 			const login = new BrowserLogin({
 				headless: config.headless,
-				cookiesPath: "./cookies.json",
+				cookiesPath: COOKIES_PATH,
 			});
 			const { browser, context } = await login.authenticate();
 
@@ -93,7 +102,22 @@ export async function run(config: MoodboardConfig): Promise<RunResult> {
 				const imagesByKeyword: PinAsset[][] = [];
 				const videosByKeyword: PinAsset[][] = [];
 				for (const keyword of keywords.keywords) {
-					const assets = await collectForKeyword(context, keyword, { media: config.media });
+					let assets: PinAsset[];
+					if (engine === "scrapling") {
+						try {
+							assets = await collectForKeywordViaScrapling(keyword, {
+								media: config.media,
+								cookiesPath: COOKIES_PATH,
+							});
+						} catch (e) {
+							console.warn(
+								`  ⚠  scrape-engine unavailable for "${keyword}" (${e instanceof Error ? e.message : e}); falling back to Playwright`,
+							);
+							assets = await collectForKeyword(context, keyword, { media: config.media });
+						}
+					} else {
+						assets = await collectForKeyword(context, keyword, { media: config.media });
+					}
 					const kwImages: PinAsset[] = [];
 					const kwVideos: PinAsset[] = [];
 					for (const a of assets) {
