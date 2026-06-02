@@ -1,6 +1,6 @@
-import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { runClaude as spawnClaude } from "./claude";
 import { type VisualDNA, VisualDNASchema } from "./types";
 
 const PROMPT_PATH = new URL("../prompts/visual-dna.md", import.meta.url).pathname;
@@ -23,18 +23,8 @@ function extractJson(raw: string): unknown {
 }
 
 function runClaude(prompt: string, addDir: string, timeoutMs: number): string {
-	const args = ["--print", "--allowedTools", "Read", "--add-dir", addDir];
-	const result = spawnSync("claude", args, {
-		input: prompt,
-		encoding: "utf8",
-		timeout: timeoutMs,
-	});
-	if (result.status !== 0) {
-		throw new Error(
-			`claude CLI failed (exit ${result.status}): ${result.stderr || result.error?.message || "no stderr"}`,
-		);
-	}
-	return (result.stdout || "").trim();
+	// Auth order (subscription-first, key fallback) is handled by ./claude.
+	return spawnClaude(["--print", "--allowedTools", "Read", "--add-dir", addDir], prompt, timeoutMs);
 }
 
 function loadFixture(imagePath: string): VisualDNA | null {

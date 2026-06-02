@@ -38,7 +38,12 @@ lastUpdatedBy: build-mode
 
 ## Fix Log
 
-_Entries added by diagnosis workflow._
+### fix-002 — 2026-06-02 — Subscription-first Claude auth (don't let a dead API key block runs)
+
+- **Symptom**: with an `ANTHROPIC_API_KEY` exported in the shell / project `.env`, the spawned `claude` subprocess billed console credits and failed **"Credit balance is too low" (exit 1)** even when the user had an active Claude Code subscription. Recurred 2026-05-28 and 2026-06-01.
+- **Fix**: new `src/claude.ts` centralises the `claude` spawn with an auth-mode order — **subscription first** (spawns with `ANTHROPIC_API_KEY` stripped from the env → uses the subscription login), then **apikey** as a fallback (only if a key is set). `analyze.ts`/`keywords.ts` now delegate to it (call sites unchanged). Override via `MOODBOARDER_CLAUDE_AUTH` = `auto` (default) | `subscription` | `apikey`.
+- **Why**: stripping `ANTHROPIC_API_KEY` for the child was the manual workaround used during the 2026-06-01 run (`env -u ANTHROPIC_API_KEY`); this bakes it into the system as the default and adds a fallback + opt-out.
+- **Files**: `src/claude.ts` (new), `src/analyze.ts`, `src/keywords.ts`, `tests/claude.test.ts` (new, 8 cases), `knowledge/domain.md`. biome clean; 60/60 tests pass. Verified live: depleted key in env → resolves `[subscription, apikey]` → succeeds via subscription.
 
 ## Diagnosis Log
 
