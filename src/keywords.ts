@@ -1,6 +1,6 @@
-import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { runClaude as spawnClaude } from "./claude";
 import { formatDescriptionBlock } from "./input/description";
 import { type Keywords, KeywordsSchema, type MergedDNA } from "./types";
 
@@ -27,17 +27,8 @@ function extractJson(raw: string): unknown {
 }
 
 function runClaude(prompt: string, timeoutMs: number): string {
-	const result = spawnSync("claude", ["--print"], {
-		input: prompt,
-		encoding: "utf8",
-		timeout: timeoutMs,
-	});
-	if (result.status !== 0) {
-		throw new Error(
-			`claude CLI failed (exit ${result.status}): ${result.stderr || result.error?.message || "no stderr"}`,
-		);
-	}
-	return (result.stdout || "").trim();
+	// Auth order (subscription-first, key fallback) is handled by ./claude.
+	return spawnClaude(["--print"], prompt, timeoutMs);
 }
 
 function loadFixture(): Keywords | null {

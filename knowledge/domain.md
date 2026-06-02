@@ -55,6 +55,20 @@ Video pins are served via Idea-Pin / story-pin components whose DOM structure Pi
 - Both prompts demand JSON-only output and the system retries once on parse-fail with a stricter "JSON only, no prose" preamble.
 - CI environments without `claude` on PATH must use the fixture-replay layer (set `MOODBOARDER_REPLAY_FIXTURES=1`).
 
+#### Auth resolution (subscription-first)
+
+Both spawns go through `src/claude.ts` `runClaude()`, which picks the auth path in this order:
+
+1. **subscription** — spawns `claude` with `ANTHROPIC_API_KEY` **stripped from the env**, so the CLI uses the logged-in Claude Code subscription (Pro/Max).
+2. **apikey** — spawns with the inherited env (uses `ANTHROPIC_API_KEY`, i.e. pay-as-you-go console billing). Only attempted as a fallback, and only when a key is actually set.
+
+This is deliberate: a depleted `ANTHROPIC_API_KEY` (exported in the shell or a project `.env`) otherwise shadows the subscription and the CLI fails with **"Credit balance is too low"**. Subscription-first means that no longer blocks a user who has an active subscription. If the first mode exits non-zero and another is available, the next is tried; the thrown error lists every mode's failure.
+
+Override with **`MOODBOARDER_CLAUDE_AUTH`**:
+- unset / `auto` → `subscription` then `apikey` (default)
+- `subscription` → subscription only (never touch the key)
+- `apikey` / `api` → API key only (legacy behaviour; falls back to subscription if no key is set)
+
 ### ffmpeg keyframe heuristic
 
 For video input, `src/input/video.ts` extracts N (default 5) evenly-spaced keyframes:
