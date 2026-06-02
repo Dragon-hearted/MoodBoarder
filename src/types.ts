@@ -69,6 +69,7 @@ export const MoodboardConfigSchema = z
 		description: z.string().optional(),
 		keywords: z.number().int().positive().default(5),
 		media: MediaModeSchema.default("both"),
+		engine: z.enum(["playwright", "scrapling"]).default("playwright"),
 		imageCount: z.number().int().min(0),
 		videoCount: z.number().int().min(0),
 		headless: z.boolean().default(false),

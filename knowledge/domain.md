@@ -41,6 +41,20 @@ https://v1.pinimg.com/videos/720p/…
 
 Unlike images, Pinterest serves a single best-rez per video pin — there's no resolution-swap trick. The `videoHash()` dedupe key is the last path segment of the `.mp4` URL. Video pins are typically <30s reel-style content; the system has no per-video size cap by design (user-confirmed). A 120s download timeout in `downloader.ts` provides a soft ceiling on pathological cases.
 
+### Scrape engine (`--engine scrapling`)
+
+By default MoodBoarder harvests with the local Playwright browser. `--engine scrapling`
+(or `MOODBOARDER_ENGINE=scrapling`) instead routes each keyword through the in-repo
+**scrape-engine** CLI (Scrapling StealthyFetcher: anti-bot + Cloudflare bypass + `adaptive=True`
+element relocation) over a process boundary — MoodBoarder spawns it, with no TS dependency. On any
+engine failure (block / dependency / timeout) it **reverts to the Playwright collector** for that
+keyword, so the flag is safe to leave on. The same `cookies.json` feeds both engines.
+
+**Trade-off (why Playwright stays default):** a single StealthyFetcher fetch is ONE page load,
+not the 14-round scroll harvest — so per-keyword yield is lower (~one screenful of pins). Reach
+for scrapling when anti-bot blocking or the `<video>`→`<source>` markup drift below is biting;
+stay on Playwright when raw per-keyword volume matters most.
+
 ### Pinterest video markup may drift
 
 Video pins are served via Idea-Pin / story-pin components whose DOM structure Pinterest A/Bs. The current `<video>` + `<source src>` selector works as of 2026-05-27 but should be verified during any future scrape run. If Pinterest moves the URL into a `data-*` attribute or a JSON blob, the scraper needs a fallback path. The `--media images` feature-flag bypass keeps the system useful even if the video path breaks temporarily.

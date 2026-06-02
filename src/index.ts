@@ -10,6 +10,7 @@ import { extractKeyframes } from "./input/video";
 import { generateKeywords } from "./keywords";
 import { buildClientPath, nowTimestamp } from "./paths";
 import { collectForKeyword, pinHash, videoHash } from "./pinterest-scraper";
+import { collectForKeywordViaScrapling } from "./scrapling-collector";
 import type { MoodboardConfig, PinAsset, VisualDNA } from "./types";
 
 export interface RunResult {
@@ -93,7 +94,36 @@ export async function run(config: MoodboardConfig): Promise<RunResult> {
 				const imagesByKeyword: PinAsset[][] = [];
 				const videosByKeyword: PinAsset[][] = [];
 				for (const keyword of keywords.keywords) {
-					const assets = await collectForKeyword(context, keyword, { media: config.media });
+					let assets: PinAsset[];
+					try {
+						if (config.engine === "scrapling") {
+							// Opt-in: harvest via the scrape-engine StealthyFetcher. On ANY
+							// engine failure (block / dependency / timeout) revert to the
+							// existing Playwright collector for this keyword.
+							try {
+								assets = await collectForKeywordViaScrapling(keyword, "./cookies.json", {
+									media: config.media,
+								});
+								console.log(
+									`  Searching: "${keyword}"  → via scrape-engine: ${assets.length} assets`,
+								);
+							} catch (se) {
+								console.warn(
+									`  ⚠  scrape-engine fell back to Playwright for "${keyword}": ${se instanceof Error ? se.message : String(se)}`,
+								);
+								assets = await collectForKeyword(context, keyword, { media: config.media });
+							}
+						} else {
+							assets = await collectForKeyword(context, keyword, { media: config.media });
+						}
+					} catch (e) {
+						// A transient per-keyword failure (e.g. Pinterest nav timeout) must
+						// not abort the whole run — log and move on to the next keyword.
+						console.warn(
+							`  ⚠  skipping "${keyword}" — scrape failed: ${e instanceof Error ? e.message : String(e)}`,
+						);
+						continue;
+					}
 					const kwImages: PinAsset[] = [];
 					const kwVideos: PinAsset[] = [];
 					for (const a of assets) {
