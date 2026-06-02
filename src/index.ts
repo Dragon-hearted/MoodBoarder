@@ -87,22 +87,52 @@ export async function run(config: MoodboardConfig): Promise<RunResult> {
 			try {
 				const globalImages = new Map<string, PinAsset>();
 				const globalVideos = new Map<string, PinAsset>();
+				// Per-keyword buckets of first-seen pins, so the downloader can sample
+				// evenly across ALL keywords instead of draining keyword 1 first (a
+				// single keyword often yields 200+ uniques, more than the target).
+				const imagesByKeyword: PinAsset[][] = [];
+				const videosByKeyword: PinAsset[][] = [];
 				for (const keyword of keywords.keywords) {
 					const assets = await collectForKeyword(context, keyword, { media: config.media });
+					const kwImages: PinAsset[] = [];
+					const kwVideos: PinAsset[] = [];
 					for (const a of assets) {
 						if (a.kind === "image") {
 							const k = pinHash(a.url);
-							if (!globalImages.has(k)) globalImages.set(k, a);
+							if (!globalImages.has(k)) {
+								globalImages.set(k, a);
+								kwImages.push(a);
+							}
 						} else {
 							const k = videoHash(a.url);
-							if (!globalVideos.has(k)) globalVideos.set(k, a);
+							if (!globalVideos.has(k)) {
+								globalVideos.set(k, a);
+								kwVideos.push(a);
+							}
 						}
 					}
+					imagesByKeyword.push(kwImages);
+					videosByKeyword.push(kwVideos);
 					console.log(
 						`  Global unique pins: ${globalImages.size + globalVideos.size} (i=${globalImages.size} v=${globalVideos.size})`,
 					);
 				}
-				const candidates: PinAsset[] = [...globalImages.values(), ...globalVideos.values()];
+				// Round-robin interleave across keywords so the downloader's
+				// take-first-N selection draws ~evenly from every keyword.
+				const interleave = (buckets: PinAsset[][]): PinAsset[] => {
+					const out: PinAsset[] = [];
+					const max = buckets.reduce((m, b) => Math.max(m, b.length), 0);
+					for (let i = 0; i < max; i++) {
+						for (const b of buckets) {
+							if (i < b.length) out.push(b[i]);
+						}
+					}
+					return out;
+				};
+				const candidates: PinAsset[] = [
+					...interleave(imagesByKeyword),
+					...interleave(videosByKeyword),
+				];
 				console.log(
 					`\n  Downloading up to ${config.imageCount} images + ${config.videoCount} videos from ${candidates.length} candidates…`,
 				);
