@@ -47,7 +47,7 @@ export function classifyUrl(url: string): "image" | "video" | null {
 	return null;
 }
 
-function isJunkPinUrl(u: string): boolean {
+export function isJunkPinUrl(u: string): boolean {
 	return (
 		u.includes("/avatars/") ||
 		u.includes("/user_images/") ||

@@ -53,6 +53,16 @@ lastUpdatedBy: build-mode
 - One run (ref_05 chrome) hit a transient Playwright `goto` timeout on its 5th keyword and aborted (0 saved); single retry succeeded (32 saved). Tier-1 recovery.
 - Output hard gates PASS 8/8. Folders relabeled by cluster (`01-lowpoly-3d` … `08-popart-screenprint`). A `gallery.html` contact-sheet generator lives at monorepo `.tmp/make_gallery.ts` → writes into the moodboard dir.
 
+## Feature Log
+
+### feat-001 — 2026-06-02 — Opt-in `--engine scrapling` (scrape-engine adoption)
+
+- Added an opt-in harvest path behind `--engine scrapling` (or `MOODBOARDER_ENGINE=scrapling`); default stays `playwright`, so existing behavior is unchanged.
+- `src/scrapling-collector.ts` shells out to the in-repo **scrape-engine** CLI (`fetch … --json`) over a process boundary — the repo's spawn-a-sibling pattern (no TS dependency on scrape-engine; a standalone MoodBoarder clone still runs the default path). Raw URLs run back through the existing `pinHash`/`videoHash`/`pinResolutionRank`/`toHiRes`/`isJunkPinUrl` helpers, so the `PinAsset[]` contract is identical across engines.
+- Per-keyword routing in `index.ts`: on ANY scrape-engine failure (block / dependency / timeout) it reverts to the Playwright `collectForKeyword` for that keyword; composes with the per-keyword resilience try/catch.
+- Engine CLI path overridable via `SCRAPE_ENGINE_CLI` / `SCRAPE_ENGINE_BUN`. Verified live: a stealthy fetch returned 45 hi-res image PinAssets (~22s) with the real `cookies.json`. biome + tsc clean; +8 unit tests for `extractedToPinAssets`.
+- **Trade-off:** one StealthyFetcher fetch ≠ the 14-round Playwright scroll, so per-keyword yield is lower (~one screen of pins). Use scrapling when anti-bot/markup-drift resilience matters; Playwright when raw yield does.
+
 ## Fix Log
 
 ### fix-001 — 2026-06-01 — Downloads drained keyword 1 only (no keyword spread)

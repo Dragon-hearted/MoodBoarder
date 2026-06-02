@@ -18,6 +18,10 @@ FLAGS
   --description <text>      Optional description nudge for keyword synthesis.
   --keywords <n>            How many Pinterest search phrases to synthesize. Default 5.
   --media <mode>            images | videos | both. Default both.
+  --engine <name>           playwright | scrapling. Default playwright.
+                            scrapling routes the harvest through scrape-engine
+                            (anti-bot + adaptive extraction) and falls back to
+                            playwright on any failure. Also via MOODBOARDER_ENGINE.
   --image-count <n>         Target image downloads. Default 40 (when --media is images or both).
   --video-count <n>         Target video downloads. Default 10 (when --media is videos or both).
   --count <n>               Sugar for total. Conflicts with --image-count and --video-count.
@@ -63,6 +67,7 @@ interface RawArgs {
 	description?: string;
 	keywords?: number;
 	media?: MediaMode;
+	engine?: "playwright" | "scrapling";
 	imageCount?: number;
 	videoCount?: number;
 	count?: number;
@@ -94,6 +99,7 @@ function parseRawArgs(): RawArgs {
 				description: { type: "string" },
 				keywords: { type: "string" },
 				media: { type: "string" },
+				engine: { type: "string" },
 				"image-count": { type: "string" },
 				"video-count": { type: "string" },
 				count: { type: "string" },
@@ -127,6 +133,14 @@ function parseRawArgs(): RawArgs {
 		const result = MediaModeSchema.safeParse(v.media);
 		if (!result.success) die(`--media must be one of: images, videos, both (got "${v.media}")`);
 		raw.media = result.data;
+	}
+	const engineRaw = (typeof v.engine === "string" ? v.engine : process.env.MOODBOARDER_ENGINE)
+		?.trim()
+		.toLowerCase();
+	if (engineRaw) {
+		if (engineRaw !== "playwright" && engineRaw !== "scrapling")
+			die(`--engine must be one of: playwright, scrapling (got "${engineRaw}")`);
+		raw.engine = engineRaw;
 	}
 	if (typeof v["image-count"] === "string")
 		raw.imageCount = parseInt10(v["image-count"], "image-count");
@@ -216,6 +230,7 @@ function buildConfig(raw: RawArgs): MoodboardConfig {
 		description: raw.description,
 		keywords: raw.keywords ?? 5,
 		media,
+		engine: raw.engine ?? "playwright",
 		imageCount: counts.imageCount,
 		videoCount: counts.videoCount,
 		headless: raw.headless ?? false,
